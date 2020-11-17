@@ -35,9 +35,9 @@ def updateCurrPart(partNum):
         if shared_array[row, col] == 0 and alive == 3:
             status = 1
         rowColStat.append([row, col, status])
-    numOfSetCells += 1
-    if numOfSetCells == cellsPerPart - 1:
-        return rowColStat
+        numOfSetCells += 1
+        if numOfSetCells == cellsPerPart - 1:
+            return rowColStat
     return rowColStat
 
 
