@@ -9,13 +9,13 @@ The universe of the Game of Life is an infinite, two-dimensional orthogonal grid
 
 # Implementation
 
-When the program starts, it generated 20 states as "headroom" for when it generates the next states. State generation is implemented using proccess pool on multiple cores and it generates a proccess for each proccessor core. GUI is on the main thead, while the state generation in on a seperate thread. The states are stored in a queue so when each state is displayed, it is discarded.
+When the program starts, it generated 20 states as "headroom" for when it generates the next states. State generation is implemented using process pool on multiple cores and it generates a process for each processor core. GUI is on the main thread, while the state generation in on a seperate thread. The states are stored in a queue so when each state is displayed, it is discarded.
 
 # Controls
 
 - Left mouse button - Set cell to alive or dead
 - Middle mouse button - Randomly generate start state
-- Right mouse button - Start the simulation
+- Right mouse button - Starts the simulation
 
 
 
