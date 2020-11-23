@@ -1,69 +1,69 @@
-import time
-import queue
-import numpy as np
+import multiprocessing
+
 import pygame
-import threading
-from arrayqueues.shared_arrays import ArrayQueue
-from modules.processPool import processPool
-from modules.serial import serial
+import numpy as np
+from view import startGame
 
-col_alive = (255, 255, 215)
-col_background = (10, 10, 40)
-col_grid = (30, 30, 60)
-
-lock = threading.Lock()
-queue = ArrayQueue(100)
-lastState = None
+clr_alive = (255, 255, 215)
+clr_background = (10, 10, 40)
+clr_grid = (30, 30, 60)
 
 
-def stepsGenerator(steps, n, parts):
-    global queue
-    global lastState
-    lock.acquire()
-    newSteps = processPool(steps[len(steps) - 1], n, 20, parts)
-    for i in range(1, len(newSteps)):
-        queue.put(newSteps[i])
-    lastState = newSteps[len(newSteps)-1]
-    lock.release()
+def setScreen():
+    pygame.init()
+    pygame.display.set_caption("John Conway's Game of Life")
+    screen = pygame.display.set_mode((n * cellSize, n * cellSize))
+    screen.fill(clr_grid)
+
+    for row in range(n):
+        for col in range(n):
+            rect = pygame.Rect(col * cellSize, row * cellSize, cellSize - 1, cellSize - 1)
+            pygame.draw.rect(screen, clr_background, rect)
+    pygame.display.update()
+    return screen
 
 
-def update(surface, currState, n, sz):
-    for row in range(len(currState)):
-        for col in range(len(currState)):
-            if currState[row, col] == 1:
-                clr = col_alive
-            else:
-                clr = col_background
-            rect = pygame.Rect(col * sz, row * sz, sz - 1, sz - 1)
-            pygame.draw.rect(surface, clr, rect)
+def updateOneCell(stateRow, stateCol, startState, screen):
+    rect = pygame.Rect(stateRow * cellSize, stateCol * cellSize, cellSize - 1, cellSize - 1)
+    if startState[stateCol][stateRow] == 1:
+        clr = clr_background
+    else:
+        clr = clr_alive
+    pygame.draw.rect(screen, clr, rect)
+    startState[stateCol][stateRow] = not startState[stateCol][stateRow]
+
+
+def updateAllCells(startState, screen, n):
+    for row in range(n):
+        for col in range(n):
+            updateOneCell(row, col, startState, screen)
+
+
+def setAliveCells(n, cellSize):
+    screen = setScreen()
+    startState = np.zeros((n, n))
+    listening = True
+    while listening:
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                button = pygame.mouse.get_pressed()
+                if button[0]:
+                    stateRow = (event.pos[0] // cellSize)
+                    stateCol = (event.pos[1] // cellSize)
+                    updateOneCell(stateRow, stateCol, startState, screen)
+                    pygame.display.update()
+                if button[1]:
+                    startState = (np.random.rand(n ** 2).reshape(n, n) > 0.5).astype(np.int8)
+                    updateAllCells(startState, screen, n)
+                    pygame.display.update()
+                if button[2]:
+                    listening = False
+            elif event.type == pygame.QUIT:
+                quit()
+    startGame(screen, startState, n, cellSize)
 
 
 if __name__ == '__main__':
     n = 50
-    iterations = 20
-    parts = 2
-    cellSize = 20
-    startState = (np.random.rand(n ** 2).reshape(n, n) > 0.5).astype(np.int8)
-    steps = processPool(startState, n, iterations, parts)
-    for i in range(len(steps)):
-        queue.put(steps[i])
-    lastState = steps[len(steps)-1]
-    surface = pygame.display.set_mode((n * cellSize, n * cellSize))
-    pygame.display.set_caption("John Conway's Game of Life")
-
-    while not queue.empty():
-        for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN:  # or MOUSEBUTTONDOWN depending on what you want.
-                print(event.pos)
-            elif event.type == pygame.QUIT:
-                quit()
-
-        pygame.display.update()
-        surface.fill(col_grid)
-        currState = queue.get()
-        update(surface, currState, n, cellSize)
-        pygame.display.update()
-        time.sleep(0.1)
-        if not lock.locked():
-            thread = threading.Thread(target=stepsGenerator, args=(steps, n, parts))
-            thread.start()
+    cellSize = 10
+    setAliveCells(n, cellSize)
