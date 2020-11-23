@@ -41,7 +41,7 @@ def updateCurrPart(partNum):
     return rowColStat
 
 
-def processPool(n, iterations, numOfParts):
+def processPool(startState, n, iterations, numOfParts):
     global shared_array
     global cellsPerPart
     global n_
@@ -50,19 +50,19 @@ def processPool(n, iterations, numOfParts):
     shared_array_base = multiprocessing.Array(ctypes.c_double, n ** 2)
     shared_array = np.ctypeslib.as_array(shared_array_base.get_obj())
     shared_array = shared_array.reshape(n, n)
-    currIterMatrix = (np.random.rand(n ** 2).reshape(n, n) > 0.5).astype(np.int8)
+
     cellsPerPart = math.ceil(n ** 2 / numOfParts)
     pool = multiprocessing.Pool(numOfParts)
-    listOfMatrix.append(currIterMatrix.copy())
+    listOfMatrix.append(startState.copy())
     for iter in range(iterations):
         for row in range(n):
             for col in range(n):
-                shared_array[row, col] = currIterMatrix[row, col]
+                shared_array[row, col] = startState[row, col]
         result = pool.map(updateCurrPart, range(numOfParts))
         for resultSubset in result:
             for cell in resultSubset:
-                currIterMatrix[cell[0], cell[1]] = cell[2]
-        listOfMatrix.append(currIterMatrix.copy())
+                startState[cell[0], cell[1]] = cell[2]
+        listOfMatrix.append(startState.copy())
     pool.close()
     pool.join()
     return listOfMatrix

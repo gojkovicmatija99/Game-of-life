@@ -1,38 +1,69 @@
 import time
-
-from matplotlib.animation import FuncAnimation
-import matplotlib.pyplot as plt
+import queue
+import numpy as np
+import pygame
+import threading
+from arrayqueues.shared_arrays import ArrayQueue
 from modules.processPool import processPool
 from modules.serial import serial
 
-def animate(steps):
+col_alive = (255, 255, 215)
+col_background = (10, 10, 40)
+col_grid = (30, 30, 60)
 
-    def init():
-        im.set_data(steps[0])
-        return [im]
+lock = threading.Lock()
+queue = ArrayQueue(100)
+lastState = None
 
-    def animate(i):
-        im.set_data(steps[i])
-        return [im]
 
-    im = plt.matshow(steps[0], interpolation='None', animated=True);
+def stepsGenerator(steps, n, parts):
+    global queue
+    global lastState
+    lock.acquire()
+    newSteps = processPool(steps[len(steps) - 1], n, 20, parts)
+    for i in range(1, len(newSteps)):
+        queue.put(newSteps[i])
+    lastState = newSteps[len(newSteps)-1]
+    lock.release()
 
-    anim = FuncAnimation(im.get_figure(), animate, init_func=init,
-                         frames=len(steps), interval=500, blit=True, repeat=False);
-    return anim
+
+def update(surface, currState, n, sz):
+    for row in range(len(currState)):
+        for col in range(len(currState)):
+            if currState[row, col] == 1:
+                clr = col_alive
+            else:
+                clr = col_background
+            rect = pygame.Rect(col * sz, row * sz, sz - 1, sz - 1)
+            pygame.draw.rect(surface, clr, rect)
 
 
 if __name__ == '__main__':
-    n = 500
-    iterations = 5
-    parts = 8
-    print("Starting...")
-    start = time.time()
-    #steps = serial(n, iterations)
-    steps = processPool(n, iterations, parts)
-    sec = time.time() - start
-    print(f"End {sec} s")
-    anim = animate(steps)
-    f = open("animation.html", "w")
-    f.write(anim.to_html5_video())
-    f.close()
+    n = 50
+    iterations = 20
+    parts = 2
+    cellSize = 20
+    startState = (np.random.rand(n ** 2).reshape(n, n) > 0.5).astype(np.int8)
+    steps = processPool(startState, n, iterations, parts)
+    for i in range(len(steps)):
+        queue.put(steps[i])
+    lastState = steps[len(steps)-1]
+    surface = pygame.display.set_mode((n * cellSize, n * cellSize))
+    pygame.display.set_caption("John Conway's Game of Life")
+
+    while not queue.empty():
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:  # or MOUSEBUTTONDOWN depending on what you want.
+                print(event.pos)
+            elif event.type == pygame.QUIT:
+                quit()
+
+        pygame.display.update()
+        surface.fill(col_grid)
+        currState = queue.get()
+        update(surface, currState, n, cellSize)
+        pygame.display.update()
+        time.sleep(0.1)
+        if not lock.locked():
+            thread = threading.Thread(target=stepsGenerator, args=(steps, n, parts))
+            thread.start()
