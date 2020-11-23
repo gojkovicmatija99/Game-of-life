@@ -7,6 +7,7 @@ cellsPerPart = 0
 n_ = 0
 shared_array = None
 
+
 def updateCurrPart(partNum):
     global cellsPerPart
     global n_
@@ -14,7 +15,7 @@ def updateCurrPart(partNum):
     numOfSetCells = 0
     rowColStat = []
     for num in range(startCell, n_ ** 2):
-        row = math.floor(num / n_)
+        row = math.floor(num // n_)
         col = num % n_
         alive = 0
         for neighbourRow in range(3):
@@ -41,12 +42,13 @@ def updateCurrPart(partNum):
     return rowColStat
 
 
-def processPool(startState, n, iterations, numOfParts):
+def stateGenerator(startState, n, iterations):
     global shared_array
     global cellsPerPart
     global n_
     listOfMatrix = []
     n_ = n
+    numOfParts = multiprocessing.cpu_count()
     shared_array_base = multiprocessing.Array(ctypes.c_double, n ** 2)
     shared_array = np.ctypeslib.as_array(shared_array_base.get_obj())
     shared_array = shared_array.reshape(n, n)
